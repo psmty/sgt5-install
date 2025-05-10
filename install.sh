@@ -4,8 +4,8 @@ set -e
 trap "clear; exit" INT TERM EXIT
 
 TITLE="SGT5 Installation Wizard"
-WIDTH=80
-HEIGHT=20
+WIDTH=60
+HEIGHT=15
 PRIVATE_REPO="psmty/sgt5-docker"
 
 # 🚫 Check if current directory is completely empty
@@ -18,7 +18,7 @@ if [ "$(ls -A1)" ]; then
 fi
 
 # Welcome screen
-dialog --clear --backtitle "$TITLE" --title "$TITLE" --yesno "Welcome to the SGT5 installation wizard.\n\nThis script will download the private repository.\n\nDo you want to continue?" $HEIGHT $WIDTH
+dialog --clear --backtitle "$TITLE" --title "$TITLE" --yesno "Welcome to the SGT5 installation wizard.\n\nThis script will download the required files from the private repository.\n\nDo you want to continue?" $HEIGHT $WIDTH
 if [ $? -ne 0 ]; then
     clear
     echo "❌ Installation cancelled."
@@ -27,7 +27,7 @@ fi
 
 # Ask for GitHub token
 TMP_TOKEN=$(mktemp)
-dialog --clear --backtitle "$TITLE" --title "GitHub Token" --insecure --passwordbox "Enter your GitHub Personal Access Token:" 10 $WIDTH 2>"$TMP_TOKEN"
+dialog --clear --backtitle "$TITLE" --title "GitHub Token" --inputbox "Enter your GitHub Personal Access Token:" $HEIGHT $WIDTH 2>"$TMP_TOKEN"
 if [ $? -ne 0 ]; then
     clear
     echo "❌ Token input cancelled."
