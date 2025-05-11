@@ -120,7 +120,7 @@ if [ "$REBOOT_NEEDED" = true ]; then
         echo "🔁 Rebooting now..."
         sleep 1
         echo "Please run the installer again after reboot with:"
-        echo "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/psmty/sgt5-install/main/install.sh)\""
+        echo '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/psmty/sgt5-install/main/install.sh)"'
         sleep 2
         sudo reboot
     else
