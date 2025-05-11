@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-trap "clear; exit" INT TERM EXIT
 
 TITLE="SGT5 Installation Wizard"
 WIDTH=60
