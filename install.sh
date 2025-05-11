@@ -10,7 +10,7 @@ PRIVATE_REPO="psmty/sgt5-docker"
 
 # Ensure essential tools (dialog, fzf) are installed
 sudo apt-get update -y >/dev/null
-sudo apt-get install -y dialog fzf curl unzip zip >/dev/null
+sudo apt-get install -y dialog fzf >/dev/null
 
 # Check if current directory is completely empty
 if [ "$(ls -A1)" ]; then
