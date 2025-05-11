@@ -127,6 +127,7 @@ if [ "$REBOOT_NEEDED" = true ]; then
         echo '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/psmty/sgt5-install/main/install.sh)"'
         sleep 2
         sudo reboot
+        exit 0
     else
         dialog --clear --backtitle "$TITLE" --title "Manual Restart" \
             --msgbox "You chose not to reboot now.\n\nPlease reboot manually and run this install script again:\n\n/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/psmty/sgt5-install/main/install.sh)\"" $HEIGHT $WIDTH
