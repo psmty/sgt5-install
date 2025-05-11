@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+trap "clear; exit" INT TERM EXIT
 
 TITLE="SGT5 Installation Wizard"
 WIDTH=60
@@ -10,8 +11,8 @@ PRIVATE_REPO="psmty/sgt5-docker"
 echo "Initializing installation..."
 echo "Downloading the graphical interface..."
 
+# Ensure essential tools (dialog, fzf) are installed if missing
 MISSING_PACKAGES=()
-
 for pkg in dialog fzf; do
     if ! dpkg -s "$pkg" >/dev/null 2>&1; then
         MISSING_PACKAGES+=("$pkg")
@@ -19,7 +20,7 @@ for pkg in dialog fzf; do
 done
 
 if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
-    echo "Installing the required packages: ${MISSING_PACKAGES[*]}..."
+    echo "Installing missing packages: ${MISSING_PACKAGES[*]}..."
     sudo apt-get update -y >/dev/null
     sudo apt-get install -y "${MISSING_PACKAGES[@]}" >/dev/null
 else
@@ -51,6 +52,15 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# === Embedded prerequisites.sh ===
+
+# Load environment variables from .env if exists
+if [ -f ./sgt5_core/.env ]; then
+    set -o allexport
+    source ./sgt5_core/.env
+    set +o allexport
+fi
+
 # Function to install a package if not installed
 install_if_missing() {
     local pkg="$1"
@@ -61,6 +71,13 @@ install_if_missing() {
         echo "✅ $pkg already installed."
     fi
 }
+
+# Create directories
+sudo mkdir -p $STORAGE_ROOT/db/mssql/{backup,data,log,secrets}
+sudo mkdir -p $STORAGE_ROOT/backups/mssql
+sudo mkdir -p $STORAGE_ROOT/logs/cron
+sudo mkdir -p $STORAGE_ROOT/settings
+sudo chmod 777 -R $SGT5_INSTALLATION_FOLDER
 
 # Install base packages
 for pkg in unzip zip curl ca-certificates; do
@@ -82,10 +99,8 @@ fi
 
 # Install Docker
 REBOOT_NEEDED=false
-
 if ! dpkg -s docker-ce >/dev/null 2>&1; then
     echo "Installing Docker..."
-    sleep 10
     for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
         sudo apt-get remove -y $pkg || true
     done
@@ -105,11 +120,10 @@ else
 fi
 
 # Ensure current user is in docker group
-if ! groups $USER | grep -q '\\bdocker\\b'; then
+if ! groups $USER | grep -q '\bdocker\b'; then
     echo "🔧 Adding $USER to docker group..."
     sudo usermod -aG docker $USER
     echo "⚠️ You need to log out and log back in for group changes to take effect."
-    # reboot not required, just relogin
 fi
 
 if [ "$REBOOT_NEEDED" = true ]; then
@@ -132,20 +146,51 @@ if [ "$REBOOT_NEEDED" = true ]; then
     fi
 fi
 
-dialog --clear --backtitle "$TITLE" --title "Reboot Required" \
-    --yesno "Prerequisites installed successfully.\n\nA system reboot is required before continuing.\n\nDo you want to reboot now?" $HEIGHT $WIDTH
+# === If no reboot is required, continue with installation ===
 
-if [ $? -eq 0 ]; then
+# Ask for GitHub token
+TMP_TOKEN=$(mktemp)
+dialog --clear --backtitle "$TITLE" --title "GitHub Token" --inputbox "Enter your GitHub Personal Access Token:" $HEIGHT $WIDTH 2>"$TMP_TOKEN"
+if [ $? -ne 0 ]; then
     clear
-    echo "🔁 Rebooting now..."
-    sleep 1
-    echo "Please run the installer again after reboot with:"
-    echo "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/psmty/sgt5-install/main/install.sh)\""
-    sleep 2
-    sudo reboot
+    echo "❌ Token input cancelled."
+    exit 1
+fi
+GITHUB_TOKEN=$(<"$TMP_TOKEN")
+rm "$TMP_TOKEN"
+
+# Prepare temp folder
+TEMP_DIR=".tmp_clone_$(date +%s)"
+
+# Show fake gauge progress during clone
+{
+    echo 20
+    sleep 0.2
+    echo 40
+    sleep 0.2
+    echo 60
+    sleep 0.2
+    echo 80
+    sleep 0.2
+    echo 100
+} | dialog --gauge "📦 Cloning $PRIVATE_REPO into temporary folder..." 8 $WIDTH 0 &
+
+# Perform actual git clone
+git clone "https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git" "$TEMP_DIR" >/dev/null 2>&1
+
+# Move contents from temp folder to current directory
+shopt -s dotglob
+mv "$TEMP_DIR"/* .
+rm -rf "$TEMP_DIR"
+
+# Clean git tracking info
+rm -rf .git .gitignore
+
+# Run start.sh with --init silently
+if [ -f "./start.sh" ]; then
+    chmod +x ./start.sh
+    ./start.sh --init
 else
-    dialog --clear --backtitle "$TITLE" --title "Manual Restart" \
-        --msgbox "You chose not to reboot now.\n\nPlease reboot manually and run this install script again:\n\n/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/psmty/sgt5-install/main/install.sh)\"" $HEIGHT $WIDTH
-    clear
-    exit 0
+    echo "❌ start.sh not found in the cloned repo."
+    exit 1
 fi
