@@ -8,9 +8,24 @@ WIDTH=60
 HEIGHT=15
 PRIVATE_REPO="psmty/sgt5-docker"
 
-# Ensure essential tools (dialog, fzf) are installed
-sudo apt-get update -y >/dev/null
-sudo apt-get install -y dialog fzf >/dev/null
+echo "Initializing installation..."
+echo "Downloading the graphical interface..."
+
+MISSING_PACKAGES=()
+
+for pkg in dialog fzf; do
+    if ! dpkg -s "$pkg" >/dev/null 2>&1; then
+        MISSING_PACKAGES+=("$pkg")
+    fi
+done
+
+if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
+    echo "Installing the required packages: ${MISSING_PACKAGES[*]}..."
+    sudo apt-get update -y >/dev/null
+    sudo apt-get install -y "${MISSING_PACKAGES[@]}" >/dev/null
+else
+    echo "✅ All required packages are already installed."
+fi
 
 # Check if current directory is completely empty
 if [ "$(ls -A1)" ]; then
