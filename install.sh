@@ -85,6 +85,7 @@ REBOOT_NEEDED=false
 
 if ! dpkg -s docker-ce >/dev/null 2>&1; then
     echo "Installing Docker..."
+    sleep 10
     for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
         sudo apt-get remove -y $pkg || true
     done
