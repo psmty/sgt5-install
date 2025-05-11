@@ -51,15 +51,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# === Embedded prerequisites.sh ===
-
-# Load environment variables from .env if exists
-if [ -f ./sgt5_core/.env ]; then
-    set -o allexport
-    source ./sgt5_core/.env
-    set +o allexport
-fi
-
 # Function to install a package if not installed
 install_if_missing() {
     local pkg="$1"
@@ -70,13 +61,6 @@ install_if_missing() {
         echo "✅ $pkg already installed."
     fi
 }
-
-# Create directories
-sudo mkdir -p $STORAGE_ROOT/db/mssql/{backup,data,log,secrets}
-sudo mkdir -p $STORAGE_ROOT/backups/mssql
-sudo mkdir -p $STORAGE_ROOT/logs/cron
-sudo mkdir -p $STORAGE_ROOT/settings
-sudo chmod 777 -R $SGT5_INSTALLATION_FOLDER
 
 # Install base packages
 for pkg in unzip zip curl ca-certificates; do
