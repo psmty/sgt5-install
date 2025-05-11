@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -e
-trap "clear; exit" INT TERM EXIT
 
 TITLE="SGT5 Installation Wizard"
 WIDTH=60
@@ -54,54 +53,62 @@ fi
 
 # Function to install a package if not installed
 install_if_missing() {
-  local pkg="$1"
-  if ! dpkg -s "$pkg" &>/dev/null; then
-    echo "🔧 Installing $pkg..."
-    sudo apt-get install -y "$pkg"
-  else
-    echo "✅ $pkg already installed."
-  fi
+    local pkg="$1"
+    if ! dpkg -s "$pkg" &>/dev/null; then
+        echo "🔧 Installing $pkg..."
+        sudo apt-get install -y "$pkg"
+    else
+        echo "✅ $pkg already installed."
+    fi
 }
 
 # Install base packages
 for pkg in unzip zip curl ca-certificates; do
-  install_if_missing "$pkg"
+    install_if_missing "$pkg"
 done
 
 # Install azcopy
 if ! command -v azcopy &>/dev/null; then
-  echo "Installing azcopy..."
-  AZCOPY_TEMP_DIR=$(mktemp -d)
-  curl -sL https://aka.ms/downloadazcopy-v10-linux -o "$AZCOPY_TEMP_DIR/azcopy.tar.gz"
-  tar -xzf "$AZCOPY_TEMP_DIR/azcopy.tar.gz" -C "$AZCOPY_TEMP_DIR"
-  AZCOPY_EXTRACTED_DIR=$(find "$AZCOPY_TEMP_DIR" -type d -name "azcopy_linux_amd64*" | head -n 1)
-  sudo cp "$AZCOPY_EXTRACTED_DIR/azcopy" /usr/local/bin/
-  sudo chmod +x /usr/local/bin/azcopy
-  rm -rf "$AZCOPY_TEMP_DIR"
-  echo "✅ azcopy installed."
+    echo "Installing azcopy..."
+    AZCOPY_TEMP_DIR=$(mktemp -d)
+    curl -sL https://aka.ms/downloadazcopy-v10-linux -o "$AZCOPY_TEMP_DIR/azcopy.tar.gz"
+    tar -xzf "$AZCOPY_TEMP_DIR/azcopy.tar.gz" -C "$AZCOPY_TEMP_DIR"
+    AZCOPY_EXTRACTED_DIR=$(find "$AZCOPY_TEMP_DIR" -type d -name "azcopy_linux_amd64*" | head -n 1)
+    sudo cp "$AZCOPY_EXTRACTED_DIR/azcopy" /usr/local/bin/
+    sudo chmod +x /usr/local/bin/azcopy
+    rm -rf "$AZCOPY_TEMP_DIR"
+    echo "✅ azcopy installed."
 fi
 
 # Install Docker
+REBOOT_NEEDED=false
+
 if ! command -v docker &>/dev/null; then
-  echo "Installing Docker..."
-  for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
-    sudo apt-get remove -y $pkg || true
-  done
-  sudo install -m 0755 -d /etc/apt/keyrings
-  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-  sudo chmod a+r /etc/apt/keyrings/docker.asc
-  echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-    $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
-    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  sudo apt-get update
-  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  sudo usermod -aG docker $USER
-  echo "✅ Docker installed."
-  REBOOT_NEEDED=true
+    echo "Installing Docker..."
+    for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+        sudo apt-get remove -y $pkg || true
+    done
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+    echo \
+        "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" |
+        sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    REBOOT_NEEDED=true
+    echo "✅ Docker installed."
 else
-  echo "✅ Docker already installed."
-  REBOOT_NEEDED=false
+    echo "✅ Docker already installed."
+fi
+
+# Ensure current user is in docker group
+if ! groups $USER | grep -q '\\bdocker\\b'; then
+    echo "🔧 Adding $USER to docker group..."
+    sudo usermod -aG docker $USER
+    echo "⚠️ You need to log out and log back in for group changes to take effect."
+    # reboot not required, just relogin
 fi
 
 if [ "$REBOOT_NEEDED" = true ]; then
