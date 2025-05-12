@@ -170,7 +170,7 @@ mv "$TEMP_DIR"/* .
 rm -rf "$TEMP_DIR"
 
 # Clean git tracking info
-rm -rf .git .gitignore
+rm -rf .git .gitignore readme.md start.png
 
 # Run start.sh with --init silently
 if [ -f "./start.sh" ]; then
