@@ -11,7 +11,8 @@ echo "Initializing installation..."
 
 if [ "$EUID" -ne 0 ]; then
     echo "🛡️  This script must be run as root. Re-running with sudo..."
-    exec sudo /bin/bash "$(realpath "$BASH_SOURCE")" "$@"
+    SCRIPT_PATH=$(realpath "${BASH_SOURCE[0]}")
+    exec sudo /bin/bash "$SCRIPT_PATH" "$@"
 fi
 
 echo "Downloading the graphical interface..."
