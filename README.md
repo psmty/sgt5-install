@@ -1,3 +1,4 @@
+
 # 📦 SGT5 Bootstrap Installer
 
 Welcome!  
@@ -22,13 +23,15 @@ The script will:
 - Automatically download and prepare the system  
 - Start an easy-to-follow setup wizard
 
+> **Important:** The script might require a restart after the first run. After rebooting, simply run the script again to complete the setup.
+
 ---
 
 ## 🛠️ What You Need
 
 - A GitHub account with access to the private SGT5 repository  
 - A valid **GitHub Personal Access Token (PAT)**  
-- A Linux environment (Ubuntu recommended)  
+- A **Linux environment** (Ubuntu recommended)  
 - An **empty folder** to begin installation
 
 ---
@@ -44,6 +47,22 @@ After you run the install command:
 
 ---
 
+## 🖥️ Connecting via VS Code
+
+For easier server management, we recommend using **VS Code**. It allows you to connect directly to your Linux server and manage the installation process effortlessly.
+
+### Recommended Extensions:
+
+- **Remote Explorer**:  
+  Use [this extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.remote-explorer) to easily explore and manage your remote server.
+
+- **Docker**:  
+  With [this extension](https://marketplace.visualstudio.com/items?itemName=ms-azuretools.vscode-docker), you can manage your Docker containers with a graphical interface directly from VS Code.
+
+---
+
 ## 📬 Questions or Help?
 
 If you experience any problems during installation, please contact your system administrator or the SGT5 development team.
+
+---
