@@ -145,31 +145,48 @@ fi
 GITHUB_TOKEN=$(<"$TMP_TOKEN")
 rm "$TMP_TOKEN"
 
+# Define log file (install.sh ile aynı dizinde olacak şekilde ayarla)
+LOG_FILE="./install.log"
+
 # Prepare temp folder
 TEMP_DIR=".tmp_clone_$(date +%s)"
+mkdir -p "$TEMP_DIR"
 
-# Show fake gauge progress during clone
+# Başlık ve bilgilendirme yazalım loga
+echo "$(date '+%Y-%m-%d %H:%M:%S') - Starting git clone..." >> "$LOG_FILE"
+
+# Run clone with logging and visual feedback
 {
-    echo 20
-    sleep 0.2
-    echo 40
-    sleep 0.2
-    echo 60
-    sleep 0.2
-    echo 80
-    sleep 0.2
+    echo 0
+    echo "XXX"
+    echo "📦 Cloning $PRIVATE_REPO..."
+    echo "XXX"
+
+    git clone "https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git" "$TEMP_DIR" >>"$LOG_FILE" 2>&1
+    CLONE_EXIT_CODE=$?
+
     echo 100
-} | dialog --gauge "📦 Cloning $PRIVATE_REPO into temporary folder..." 8 $WIDTH 0 &
+    echo "XXX"
+    if [[ $CLONE_EXIT_CODE -eq 0 ]]; then
+        echo "✅ Clone completed!"
+    else
+        echo "❌ Clone failed! Check install.log."
+    fi
+    echo "XXX"
+    sleep 1
+} | dialog --gauge "Working..." 8 $WIDTH 0
 
-# Perform actual git clone
-git clone "https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git" "$TEMP_DIR" >/dev/null 2>&1
+# Check clone success
+if [[ $CLONE_EXIT_CODE -ne 0 || ! -f "$TEMP_DIR/start.sh" ]]; then
+    clear
+    echo "❌ Git clone failed. Check $LOG_FILE for details."
+    exit 1
+fi
 
-# Move contents from temp folder to current directory
+# Move contents to current directory
 shopt -s dotglob
 mv "$TEMP_DIR"/* .
 rm -rf "$TEMP_DIR"
-
-# Clean git tracking info
 rm -rf .git .gitignore readme.md start.png
 
 # Run start.sh with --init silently
