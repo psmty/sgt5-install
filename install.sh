@@ -8,6 +8,7 @@ HEIGHT=15
 PRIVATE_REPO="psmty/sgt5-docker"
 
 echo "Initializing installation..."
+sudo chmod 777 -R .
 
 echo "Downloading the graphical interface..."
 
