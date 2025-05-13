@@ -3,14 +3,12 @@
 set -e
 
 TITLE="SGT5 Installation Wizard"
-WIDTH=60
+WIDTH=80
 HEIGHT=15
 PRIVATE_REPO="psmty/sgt5-docker"
 
 echo "Initializing installation..."
 sudo chmod 777 -R .
-
-echo "Downloading the graphical interface..."
 
 # Ensure essential tools (dialog, fzf) are installed if missing
 MISSING_PACKAGES=()
@@ -46,7 +44,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Ask for prerequisites installation
-dialog --clear --backtitle "$TITLE" --title "Install Prerequisites" --yesno "Before continuing, we need to install all required packages (Docker, AzCopy, etc).\n\nThis operation may take a few minutes.\n\nDo you want to continue?" $HEIGHT $WIDTH
+dialog --clear --backtitle "$TITLE" --title "Install Prerequisites" --yesno "Before continuing, we need to install the following required packages\n\n* docker\n* azcopy\n* zip, unzip\n* curl\n* ca-certificates\n\nThis operation may take a few minutes.\n\nDo you want to continue?" $HEIGHT $WIDTH
 if [ $? -ne 0 ]; then
     clear
     echo "⚠️ Prerequisites installation cancelled."

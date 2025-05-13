@@ -8,7 +8,7 @@ This repository is designed to simplify the installation process, even for users
 
 ---
 
-## 🚀 Quick Installation (Recommended)
+## 🚀 Installation
 
 To begin, open your terminal and run the following command **in an empty folder**:
 
@@ -24,6 +24,13 @@ The script will:
 - Start an easy-to-follow setup wizard
 
 > **Important:** The script might require a restart after the first run. After rebooting, simply run the script again to complete the setup.
+
+> ⚠️ **If the installation is interrupted** for any reason (e.g. network failure, manual stop), you can safely re-run the same command.  
+> Alternatively, if the environment is already prepared, you can resume the setup by running:
+>
+> ```bash
+> ./start.sh --init
+> ```
 
 ---
 
