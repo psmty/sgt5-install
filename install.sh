@@ -174,7 +174,7 @@ rm -rf .git .gitignore readme.md start.png
 # Run start.sh with --init silently
 if [ -f "./start.sh" ]; then
     chmod +x ./start.sh
-    ./start.sh --init
+    ./start.sh -i
 else
     echo "❌ start.sh not found in the cloned repo."
     exit 1
