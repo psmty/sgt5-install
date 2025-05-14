@@ -29,7 +29,11 @@ The script will:
 > Alternatively, if the environment is already prepared, you can resume the setup by running:
 >
 > ```bash
-> ./start.sh --init
+> sgt5 -i
+> ```
+> or
+> ```bash
+> ./start.sh -i
 > ```
 
 ---
