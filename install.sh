@@ -8,7 +8,7 @@ HEIGHT=15
 PRIVATE_REPO="psmty/sgt5-docker"
 
 echo "Initializing installation..."
-sudo -v
+
 sudo chmod 777 -R .
 
 # Ensure essential tools (dialog, fzf) are installed if missing
