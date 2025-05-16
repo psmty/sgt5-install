@@ -45,7 +45,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Ask for prerequisites installation
-dialog --clear --backtitle "$TITLE" --title "Install Prerequisites" --yesno "Before continuing, we need to install the following required packages\n\n* docker\n* azcopy\n* zip, unzip\n* curl\n* ca-certificates\n\nThis operation may take a few minutes.\n\nDo you want to continue?" $HEIGHT $WIDTH
+dialog --clear --backtitle "$TITLE" --title "Install Prerequisites" --yesno "Before continuing, we need to install the following required packages\n\n* docker\n* azcopy\n* openssl\n* zip, unzip\n* curl\n* ca-certificates\n\nThis operation may take a few minutes.\n\nDo you want to continue?" $HEIGHT $WIDTH
 if [ $? -ne 0 ]; then
     clear
     echo "⚠️ Prerequisites installation cancelled."
@@ -64,7 +64,7 @@ install_if_missing() {
 }
 
 # Install base packages
-for pkg in unzip zip curl ca-certificates; do
+for pkg in unzip zip curl ca-certificates openssl; do
     install_if_missing "$pkg"
 done
 
