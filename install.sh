@@ -140,16 +140,31 @@ fi
 
 # === If no reboot is required, continue with installation ===
 
-# Ask for GitHub token
-TMP_TOKEN=$(mktemp)
-dialog --clear --backtitle "$TITLE" --title "GitHub Token" --inputbox "Enter your GitHub Personal Access Token:" $HEIGHT $WIDTH 2>"$TMP_TOKEN"
-if [ $? -ne 0 ]; then
-    clear
-    echo "❌ Token input cancelled."
-    exit 1
-fi
-GITHUB_TOKEN=$(<"$TMP_TOKEN")
-rm "$TMP_TOKEN"
+# Ask for GitHub token (required)
+while true; do
+    TMP_TOKEN=$(mktemp)
+    dialog --clear --backtitle "$TITLE" \
+        --title "GitHub Token" \
+        --inputbox "Enter your GitHub Personal Access Token (required):" $HEIGHT $WIDTH 2>"$TMP_TOKEN"
+
+    if [ $? -ne 0 ]; then
+        clear
+        echo "❌ Token input cancelled."
+        rm -f "$TMP_TOKEN"
+        exit 1
+    fi
+
+    GITHUB_TOKEN=$(<"$TMP_TOKEN")
+    rm -f "$TMP_TOKEN"
+
+    if [[ -z "$GITHUB_TOKEN" ]]; then
+        dialog --clear --backtitle "$TITLE" \
+            --title "Missing Token" \
+            --msgbox "GitHub token cannot be empty. Please enter a valid token." 7 60
+    else
+        break
+    fi
+done
 
 # Prepare temp folder
 TEMP_DIR=".tmp_clone_$(date +%s)"
