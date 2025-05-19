@@ -36,11 +36,16 @@ fi
 
 # Check if current directory is completely empty
 if [ "$(ls -A1)" ]; then
-    dialog --clear --backtitle "$TITLE" --title "⚠️ Directory Not Empty" \
-        --msgbox "This script must be run in an EMPTY directory.\n\nPlease create a new folder and try again." $HEIGHT $WIDTH
-    clear
-    echo "⚠️ Current directory is not empty. Exiting."
-    exit 1
+    # Check if sgt5_core directory exists
+    if [ -d "./sgt5_core" ]; then
+        rm -rf ./sgt5_core
+    else
+        dialog --clear --backtitle "$TITLE" --title "⚠️ Directory Not Empty" \
+            --msgbox "This script must be run in an EMPTY directory.\n\nPlease create a new folder and try again." $HEIGHT $WIDTH
+        clear
+        echo "⚠️ Current directory is not empty. Exiting."
+        exit 1
+    fi
 fi
 
 # Welcome screen
