@@ -181,10 +181,10 @@ rm -rf .git .gitignore readme.md start.png
 clear
 tput reset
 
-# Run start.sh with --init silently
-if [ -f "./start.sh" ]; then
-    chmod +x ./start.sh
-    ./start.sh -i
+# Run start.sh with -i silently
+if [ -f "./sgt5_core/start.sh" ]; then
+    chmod +x ./sgt5_core/start.sh
+    ./sgt5_core/start.sh -i
 else
     echo "❌ start.sh not found in the cloned repo."
     exit 1
