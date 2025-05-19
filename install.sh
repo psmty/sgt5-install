@@ -184,6 +184,7 @@ tput reset
 # Run start.sh with -i silently
 if [ -f "./sgt5_core/start.sh" ]; then
     chmod +x ./sgt5_core/start.sh
+    sleep 1
     ./sgt5_core/start.sh -i
 else
     echo "❌ start.sh not found in the cloned repo."
