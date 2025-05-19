@@ -9,6 +9,13 @@ PRIVATE_REPO="psmty/sgt5-docker"
 
 echo "Initializing installation..."
 
+# Check if current directory is root "/"
+if [[ "$PWD" == "/" ]]; then
+    echo "[ERROR] You are in the root (/) directory. Aborting to prevent dangerous operations."
+    echo "Please create a new folder and try again."
+    exit 1
+fi
+
 sudo chmod 777 -R .
 
 # Ensure essential tools (dialog, fzf) are installed if missing
@@ -45,7 +52,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Ask for prerequisites installation
-dialog --clear --backtitle "$TITLE" --title "Install Prerequisites" --yesno "Before continuing, we need to install the following required packages\n\n* docker\n* azcopy\n* openssl\n* zip, unzip\n* curl\n* ca-certificates\n\nThis operation may take a few minutes.\n\nDo you want to continue?" $HEIGHT $WIDTH
+dialog --clear --backtitle "$TITLE" --title "Install Prerequisites" --yesno "Before continuing, we need to install the following required packages\n\n* docker\n* azcopy\n* 7zip\n* zip, unzip\n* curl\n* ca-certificates\n\nThis operation may take a few minutes.\n\nDo you want to continue?" $HEIGHT $WIDTH
 if [ $? -ne 0 ]; then
     clear
     echo "⚠️ Prerequisites installation cancelled."
@@ -64,7 +71,7 @@ install_if_missing() {
 }
 
 # Install base packages
-for pkg in unzip zip curl ca-certificates openssl; do
+for pkg in unzip zip curl ca-certificates p7zip-full; do
     install_if_missing "$pkg"
 done
 
