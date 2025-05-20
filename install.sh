@@ -174,9 +174,6 @@ done
 # Prepare temp folder
 TEMP_DIR=".tmp_clone_$(date +%s)"
 
-# Perform actual git clone
-git clone "https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git" "$TEMP_DIR" >/dev/null 2>&1
-
 # Show fake gauge progress during clone
 {
     echo 20
@@ -189,6 +186,12 @@ git clone "https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git" "$TEMP_DIR" >/dev
     sleep 0.2
     echo 100
 } | dialog --gauge "📦 Cloning $PRIVATE_REPO into temporary folder..." 8 $WIDTH 0 &
+
+clear
+tput reset
+
+# Perform actual git clone
+git clone "https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git" "$TEMP_DIR" >/dev/null 2>&1
 
 # Move contents from temp folder to current directory
 shopt -s dotglob
