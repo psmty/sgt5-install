@@ -174,21 +174,10 @@ done
 # Prepare temp folder
 TEMP_DIR=".tmp_clone_$(date +%s)"
 
-# Show fake gauge progress during clone
-{
-    echo 20
-    sleep 0.2
-    echo 40
-    sleep 0.2
-    echo 60
-    sleep 0.2
-    echo 80
-    sleep 0.2
-    echo 100
-} | dialog --gauge "📦 Cloning $PRIVATE_REPO into temporary folder..." 8 $WIDTH 0 &
-
 clear
 tput reset
+
+echo "Cloning the repository into temporary folder..."
 
 # Perform actual git clone
 git clone "https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git" "$TEMP_DIR" >/dev/null 2>&1
