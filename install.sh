@@ -38,7 +38,7 @@ fi
 if [ "$(ls -A1)" ]; then
     # Check if sgt5_core directory exists
     if [ -d "./sgt5_core" ]; then
-        rm -rf ./sgt5_core
+        echo "sgt5_core folder will be updated"
     else
         dialog --clear --backtitle "$TITLE" --title "⚠️ Directory Not Empty" \
             --msgbox "This script must be run in an EMPTY directory.\n\nPlease create a new folder and try again." $HEIGHT $WIDTH
@@ -178,6 +178,10 @@ clear
 tput reset
 
 echo "Cloning the repository into temporary folder..."
+
+if [ -d "./sgt5_core" ]; then
+    rm -rf ./sgt5_core
+fi
 
 # Perform actual git clone
 git clone "https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git" "$TEMP_DIR" >/dev/null 2>&1
