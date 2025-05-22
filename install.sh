@@ -57,7 +57,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Ask for prerequisites installation
-dialog --clear --backtitle "$TITLE" --title "Install Prerequisites" --yesno "Before continuing, we need to install the following required packages\n\n* docker\n* azcopy\n* openssl\n* 7zip\n* gh\n* curl\n* btop\n* ca-certificates\n\nThis operation may take a few minutes.\n\nDo you want to continue?" 25 $WIDTH
+dialog --clear --backtitle "$TITLE" --title "Install Prerequisites" --yesno "Before continuing, we need to install the following required packages\n\ndocker\, azcopy, openssl, 7zip, gh, curl, btop, ca-certificates\n\nThis operation may take a few minutes.\n\nDo you want to continue?" $HEIGHT $WIDTH
 if [ $? -ne 0 ]; then
     clear
     echo "⚠️ Prerequisites installation cancelled."
