@@ -9,9 +9,9 @@ This repository is designed to simplify the installation process, even for users
 
 ## 📑 Table of Contents
 
-* [🚀 Installation](#-installation)
-* [🛠️ What You Need](#️-what-you-need)
-* [📖 Appendix: Remote Setup with VS Code](#appendix-remote-setup-with-vs-code)
+* 🚀 [Installation](#-installation)
+* 🛠️ [What You Need](#️-what-you-need)
+* 📖 [Remote Setup with VS Code](#remote-setup-with-vs-code)
 
 ---
 
@@ -50,7 +50,7 @@ The script will:
 
 ---
 
-## 📖 Appendix: Remote Setup with VS Code
+## 📖 Remote Setup with VS Code
 
 > This section explains how to connect to your server using Visual Studio Code’s Remote SSH feature and prepare your environment for SGT5 installation.
 
