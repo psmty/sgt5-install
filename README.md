@@ -43,10 +43,8 @@ The script will:
 
 ## What You Need
 
-* A GitHub account with access to the private SGT5 repository
 * A valid **GitHub Personal Access Token (PAT)**
 * A **Linux environment** (Ubuntu recommended)
-* An **empty folder** to begin installation
 
 ---
 
@@ -158,7 +156,7 @@ Open the Extensions panel (from the left sidebar), type `remote`, and install:
 
 ![Screenshot](images/terminal.png)
 
-Paste the following command into your terminal (replace the URL with the actual installer link if necessary):
+Paste the following command into your terminal:
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/psmty/sgt5-install/main/install.sh)"
@@ -171,3 +169,5 @@ Paste the following command into your terminal (replace the URL with the actual 
 
 **That’s it!**
 Your SGT5 environment should now be ready.
+
+> **Note:** To use valid SSL certificates, copy your certificate files (`chain.pem` and `key.pem`) to the `./storage/nginx/ssl-certificates` directory.
