@@ -15,7 +15,7 @@ This repository is designed to simplify the installation process, even for users
 
 ---
 
-## 🚀 Installation
+## Installation
 
 To begin, open your terminal and run the following command **in an empty folder**:
 
@@ -41,7 +41,7 @@ The script will:
 
 ---
 
-## 🛠️ What You Need
+## What You Need
 
 * A GitHub account with access to the private SGT5 repository
 * A valid **GitHub Personal Access Token (PAT)**
@@ -50,7 +50,7 @@ The script will:
 
 ---
 
-## 📖 Remote Setup with VS Code
+## Remote Setup with VS Code
 
 > This section explains how to connect to your server using Visual Studio Code’s Remote SSH feature and prepare your environment for SGT5 installation.
 
