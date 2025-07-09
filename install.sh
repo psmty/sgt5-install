@@ -48,6 +48,14 @@ if [ "$(ls -A1)" ]; then
     fi
 fi
 
+# Development warning screen
+dialog --clear --backtitle "$TITLE" --title "⚠️ DEVELOPMENT WARNING ⚠️" --yesno "🔴 ATTENTION: This is a DEVELOPMENT installer!\n\n⚠️ This installer is intended for DEVELOPMENT purposes ONLY.\n⚠️ DO NOT use this in production environments.\n⚠️ This may contain unstable features and experimental code.\n\n🔴 Use at your own risk!\n\nDo you understand and want to continue anyway?" $HEIGHT $WIDTH
+if [ $? -ne 0 ]; then
+    clear
+    echo "❌ Development warning declined. Installation cancelled for safety."
+    exit 1
+fi
+
 # Welcome screen
 dialog --clear --backtitle "$TITLE" --title "$TITLE" --yesno "Welcome to the SGT5 installation wizard.\n\nThis script will download the required files from the private repository.\n\nDo you want to continue?" $HEIGHT $WIDTH
 if [ $? -ne 0 ]; then
@@ -186,9 +194,9 @@ get_latest_available_branch() {
         return 1
     fi
     
-    # If target is empty, get the latest semantic version branch
+    # If target is empty, get the latest semantic version branch with dev_ prefix
     if [[ -z "$target" ]]; then
-        echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
+        echo "$branches" | grep -E '^dev_[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
         return
     fi
     
@@ -196,20 +204,20 @@ get_latest_available_branch() {
     local major_minor_patch=$(echo "$target" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
     
     if [[ -n "$major_minor_patch" ]]; then
-        # Look for branches matching the same major.minor.patch pattern
-        local matching_branch=$(echo "$branches" | grep -E "^${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | awk -v t="$target" '$1 <= t' | tail -n1)
+        # Look for dev_ branches matching the same major.minor.patch pattern
+        local matching_branch=$(echo "$branches" | grep -E "^dev_${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | awk -v t="dev_$target" '$1 <= t' | tail -n1)
         if [[ -n "$matching_branch" ]]; then
             echo "$matching_branch"
         else
-            # If no matching branch found, try latest of that major.minor.patch
-            echo "$branches" | grep -E "^${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | tail -n1
+            # If no matching branch found, try latest of that major.minor.patch with dev_ prefix
+            echo "$branches" | grep -E "^dev_${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | tail -n1
         fi
     else
-        # If target doesn't match expected pattern, try exact match first, then latest
-        if echo "$branches" | grep -q "^$target$"; then
-            echo "$target"
+        # If target doesn't match expected pattern, try exact match with dev_ prefix first, then latest
+        if echo "$branches" | grep -q "^dev_$target$"; then
+            echo "dev_$target"
         else
-            echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
+            echo "$branches" | grep -E '^dev_[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
         fi
     fi
 }
