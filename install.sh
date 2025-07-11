@@ -200,6 +200,12 @@ get_latest_available_branch() {
         return
     fi
     
+    # First, try exact match with dev_ prefix
+    if echo "$branches" | grep -q "^dev_$target$"; then
+        echo "dev_$target"
+        return
+    fi
+    
     # Extract major.minor.patch from target version (e.g., 9.3.1 from 9.3.1.365)
     local major_minor_patch=$(echo "$target" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
     
@@ -208,18 +214,19 @@ get_latest_available_branch() {
         local matching_branch=$(echo "$branches" | grep -E "^dev_${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | awk -v t="dev_$target" '$1 <= t' | tail -n1)
         if [[ -n "$matching_branch" ]]; then
             echo "$matching_branch"
-        else
-            # If no matching branch found, try latest of that major.minor.patch with dev_ prefix
-            echo "$branches" | grep -E "^dev_${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | tail -n1
+            return
         fi
-    else
-        # If target doesn't match expected pattern, try exact match with dev_ prefix first, then latest
-        if echo "$branches" | grep -q "^dev_$target$"; then
-            echo "dev_$target"
-        else
-            echo "$branches" | grep -E '^dev_[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
+        
+        # If no matching branch found, try latest of that major.minor.patch with dev_ prefix
+        local latest_same_pattern=$(echo "$branches" | grep -E "^dev_${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | tail -n1)
+        if [[ -n "$latest_same_pattern" ]]; then
+            echo "$latest_same_pattern"
+            return
         fi
     fi
+    
+    # If nothing found so far, fallback to latest available version with dev_ prefix
+    echo "$branches" | grep -E '^dev_[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
 }
 
 validate_github_token() {
