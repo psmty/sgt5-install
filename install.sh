@@ -393,6 +393,8 @@ if ! git clone --branch "$FALLBACK_BRANCH" --depth 1 "$GIT_CLONE_URL" "$TEMP_DIR
 fi
 
 echo "Repository cloned successfully."
+echo ""
+read -n1 -s -r -p "Press any key to return to the menu..."
 
 # Remove existing sgt5_core if present
 if [ -d "./sgt5_core" ]; then
