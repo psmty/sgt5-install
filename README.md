@@ -171,3 +171,94 @@ Paste the following command into your terminal:
 Your SGT5 environment should now be ready.
 
 > **Note:** To use valid SSL certificates, copy your certificate files (`chain.pem` and `key.pem`) to the `./storage/nginx/ssl-certificates` directory.
+
+# SSH Key Authentication Setup Guide
+
+## Windows Setup (One-time setup)
+
+### 1. Generate SSH Key Pair
+```bash
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+```
+- File location: Press Enter (use default)
+- Passphrase: Optional (leave empty or set password)
+
+## Linux Server Setup (Per server)
+
+### 2. Copy Public Key to Server
+```bash
+type C:\Users\$env:USERNAME\.ssh\id_rsa.pub | ssh root@SERVER_IP "mkdir -p ~/.ssh && cat > ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+### 3. Fix Permissions on Server
+Connect to server with password:
+```bash
+ssh root@SERVER_IP
+```
+
+Set critical permissions:
+```bash
+chmod 700 /root
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+```
+
+### 4. Check SSH Configuration
+```bash
+sudo nano /etc/ssh/sshd_config
+```
+
+Ensure these lines are correct:
+```
+PermitRootLogin yes
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+```
+
+### 5. Restart SSH Service
+```bash
+sudo systemctl restart ssh
+```
+
+### 6. Test Connection
+```bash
+exit
+ssh root@SERVER_IP
+```
+
+## Troubleshooting
+
+### Common Issues:
+- **Connection refused**: Check `/root` directory permissions (must be 700)
+- **Key not working**: Verify key hash matches between Windows and server
+- **Permission denied**: Check SSH config and restart SSH service
+
+### Debug Commands:
+```bash
+# Check key hash on Windows
+ssh-keygen -lf C:\Users\$env:USERNAME\.ssh\id_rsa.pub
+
+# Check key hash on server
+ssh-keygen -lf ~/.ssh/authorized_keys
+
+# Debug SSH connection
+ssh -v root@SERVER_IP
+
+# Check SSH logs
+sudo journalctl -u ssh -n 20
+```
+
+## Security Notes
+
+- **Critical**: `/root` directory must have 700 permissions
+- Consider disabling password authentication after key setup:
+  ```
+  PasswordAuthentication no
+  ```
+- Keep private key (`id_rsa`) secure and never share it
+- Public key (`id_rsa.pub`) can be safely shared
+
+## Success
+✅ Password-less SSH authentication  
+✅ Enhanced security  
+✅ No more password typing
