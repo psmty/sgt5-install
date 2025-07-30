@@ -192,17 +192,31 @@ get_latest_available_branch() {
         return
     fi
     
-    # Extract major.minor.patch from target version (e.g., 9.3.1 from 9.3.1.365)
+    # Extract major.minor.patch from target version (e.g., 10.0.0 from 10.0.0.512)
     local major_minor_patch=$(echo "$target" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
     
     if [[ -n "$major_minor_patch" ]]; then
-        # Look for branches matching the same major.minor.patch pattern
+        # First, try to find exact match or lower version with same major.minor.patch
         local matching_branch=$(echo "$branches" | grep -E "^${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | awk -v t="$target" '$1 <= t' | tail -n1)
         if [[ -n "$matching_branch" ]]; then
             echo "$matching_branch"
         else
-            # If no matching branch found, try latest of that major.minor.patch
-            echo "$branches" | grep -E "^${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | tail -n1
+            # If no matching branch found for this major.minor.patch, try to find any branch with same major version (lower or equal)
+            local major_version=$(echo "$major_minor_patch" | cut -d'.' -f1)
+            local fallback_branch=$(echo "$branches" | grep -E "^${major_version}\.[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | awk -v t="$target" '$1 <= t' | tail -n1)
+            if [[ -n "$fallback_branch" ]]; then
+                echo "$fallback_branch"
+            else
+                # Last resort: get the latest semantic version branch that is lower or equal to target
+                local all_versions=$(echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V)
+                local lower_version=$(echo "$all_versions" | awk -v t="$target" '$1 <= t' | tail -n1)
+                if [[ -n "$lower_version" ]]; then
+                    echo "$lower_version"
+                else
+                    # If no lower version found, get the latest available
+                    echo "$all_versions" | tail -n1
+                fi
+            fi
         fi
     else
         # If target doesn't match expected pattern, try exact match first, then latest
@@ -354,7 +368,9 @@ fi
 FALLBACK_BRANCH=$(get_latest_available_branch "$GITHUB_TOKEN" "$PRIVATE_REPO" "$TARGET_VERSION")
 
 if [[ -z "$FALLBACK_BRANCH" ]]; then
-    echo "No suitable fallback branch found for version $TARGET_VERSION"
+    echo "[ERROR] No suitable fallback branch found for version $TARGET_VERSION"
+    echo "[ERROR] Please check if the repository has any version branches"
+    exit 1
 fi
 
 echo "Using branch: $FALLBACK_BRANCH"
@@ -371,8 +387,16 @@ fi
 # Try git clone with better error handling
 GIT_CLONE_URL="https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git"
 echo "Cloning the repository into temporary folder..."
-if ! git clone --branch "$FALLBACK_BRANCH" --depth 1 "$GIT_CLONE_URL" "$TEMP_DIR"; then
-    echo "[ERROR] Failed to clone repository. Please check your token, branch name, and network connection."
+echo "Target branch: $FALLBACK_BRANCH"
+echo "Repository: $PRIVATE_REPO"
+
+if ! git clone --branch "$FALLBACK_BRANCH" --depth 1 "$GIT_CLONE_URL" "$TEMP_DIR" 2>&1; then
+    echo "[ERROR] Failed to clone repository."
+    echo "[ERROR] Branch '$FALLBACK_BRANCH' not found in repository '$PRIVATE_REPO'"
+    echo "[ERROR] Please check:"
+    echo "[ERROR] - Your GitHub token has access to the repository"
+    echo "[ERROR] - The branch '$FALLBACK_BRANCH' exists in the repository"
+    echo "[ERROR] - Your network connection is stable"
     [ -d "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
     exit 1
 fi
