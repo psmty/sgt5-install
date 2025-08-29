@@ -34,19 +34,19 @@ else
     echo "✅ All required packages are already installed."
 fi
 
-# Check if current directory is completely empty
-if [ "$(ls -A1)" ]; then
-    # Check if sgt5_core directory exists
-    if [ -d "./sgt5_core" ]; then
-        echo "sgt5_core folder will be updated"
-    else
-        dialog --clear --backtitle "$TITLE" --title "⚠️ Directory Not Empty" \
-            --msgbox "This script must be run in an EMPTY directory.\n\nPlease create a new folder and try again." $HEIGHT $WIDTH
-        clear
-        echo "⚠️ Current directory is not empty. Exiting."
-        exit 1
-    fi
-fi
+# # Check if current directory is completely empty
+# if [ "$(ls -A1)" ]; then
+#     # Check if sgt5_core directory exists
+#     if [ -d "./sgt5_core" ]; then
+#         echo "sgt5_core folder will be updated"
+#     else
+#         dialog --clear --backtitle "$TITLE" --title "⚠️ Directory Not Empty" \
+#             --msgbox "This script must be run in an EMPTY directory.\n\nPlease create a new folder and try again." $HEIGHT $WIDTH
+#         clear
+#         echo "⚠️ Current directory is not empty. Exiting."
+#         exit 1
+#     fi
+# fi
 
 # Development warning screen
 dialog --clear --backtitle "$TITLE" --title "⚠️ DEVELOPMENT WARNING ⚠️" --yesno "🔴 ATTENTION: This is a DEVELOPMENT installer!\n\n⚠️ This installer is intended for DEVELOPMENT purposes ONLY.\n⚠️ DO NOT use this in production environments.\n⚠️ This may contain unstable features and experimental code.\n\n🔴 Use at your own risk!\n\nDo you understand and want to continue anyway?" $HEIGHT $WIDTH
@@ -132,18 +132,11 @@ select_sgt5_version() {
     declare -A TAG_DATE_MAP
     local TAGS=()
 
-    # Debug: Show all available tags first
-    echo "Available tags from GHCR:"
-    echo "$versions" | jq -r '.[] | select(.metadata.container.tags != null) | .metadata.container.tags[]' | head -10
-    
     while read -r tag created; do
         [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-dev$ ]] || continue  # Show only x.x.x.x-dev format
         TAGS+=("$tag")
         TAG_DATE_MAP["$tag"]=$(date -d "$created" +%m/%d/%Y)
     done < <(echo "$versions" | jq -r '.[] | select(.metadata.container.tags != null) | .created_at as $created | .metadata.container.tags[] | "\(.),\($created)"' | tr ',' ' ')
-    
-    echo "Filtered tags (with -dev suffix):"
-    printf '%s\n' "${TAGS[@]}"
 
     if [[ ${#TAGS[@]} -eq 0 ]]; then
         dialog --msgbox "❌ No valid version tags found." 7 50
