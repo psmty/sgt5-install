@@ -133,8 +133,7 @@ select_sgt5_version() {
     local TAGS=()
 
     while read -r tag created; do
-        [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || continue
-        [[ "$tag" =~ -dev$ ]] || continue  # Show only versions ending with "-dev"
+        [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-dev$ ]] || continue  # Show only versions ending with "-dev"
         TAGS+=("$tag")
         TAG_DATE_MAP["$tag"]=$(date -d "$created" +%m/%d/%Y)
     done < <(echo "$versions" | jq -r '.[] | select(.metadata.container.tags != null) | .created_at as $created | .metadata.container.tags[] | "\(.),\($created)"' | tr ',' ' ')
