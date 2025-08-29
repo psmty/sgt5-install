@@ -444,18 +444,27 @@ if [ -f "$TEMPLATE_ENV_PATH" ]; then
     fi
     # Add or update PSMTY_CONTAINER_ALERT_API
     if grep -q "^PSMTY_CONTAINER_ALERT_API=" "$TEMPLATE_ENV_PATH"; then
-        sed -i "s/^PSMTY_CONTAINER_ALERT_API=.*/PSMTY_CONTAINER_ALERT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-alert/" "$TEMPLATE_ENV_PATH"
+        sed -i "s|^PSMTY_CONTAINER_ALERT_API=.*|PSMTY_CONTAINER_ALERT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-alert|" "$TEMPLATE_ENV_PATH"
         echo "PSMTY_CONTAINER_ALERT_API updated to value in template.env."
+    else
+        echo "PSMTY_CONTAINER_ALERT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-alert" >> "$TEMPLATE_ENV_PATH"
+        echo "PSMTY_CONTAINER_ALERT_API added to template.env."
     fi
     # Add or update PSMTY_CONTAINER_SYSTEM_REPORT_API
     if grep -q "^PSMTY_CONTAINER_SYSTEM_REPORT_API=" "$TEMPLATE_ENV_PATH"; then
-        sed -i "s/^PSMTY_CONTAINER_SYSTEM_REPORT_API=.*/PSMTY_CONTAINER_SYSTEM_REPORT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-report/" "$TEMPLATE_ENV_PATH"
+        sed -i "s|^PSMTY_CONTAINER_SYSTEM_REPORT_API=.*|PSMTY_CONTAINER_SYSTEM_REPORT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-report|" "$TEMPLATE_ENV_PATH"
         echo "PSMTY_CONTAINER_SYSTEM_REPORT_API updated to value in template.env."
+    else
+        echo "PSMTY_CONTAINER_SYSTEM_REPORT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-report" >> "$TEMPLATE_ENV_PATH"
+        echo "PSMTY_CONTAINER_SYSTEM_REPORT_API added to template.env."
     fi
     # Add or update SGT5_SERVER_ENVIRONMENT
     if grep -q "^SGT5_SERVER_ENVIRONMENT=" "$TEMPLATE_ENV_PATH"; then
-        sed -i "s/^SGT5_SERVER_ENVIRONMENT=.*/SGT5_SERVER_ENVIRONMENT=dev" "$TEMPLATE_ENV_PATH"
+        sed -i "s/^SGT5_SERVER_ENVIRONMENT=.*/SGT5_SERVER_ENVIRONMENT=dev/" "$TEMPLATE_ENV_PATH"
         echo "SGT5_SERVER_ENVIRONMENT updated to value in template.env."
+    else
+        echo "SGT5_SERVER_ENVIRONMENT=dev" >> "$TEMPLATE_ENV_PATH"
+        echo "SGT5_SERVER_ENVIRONMENT added to template.env."
     fi
 else
     echo "[WARNING] template.env not found at $TEMPLATE_ENV_PATH."
