@@ -132,11 +132,18 @@ select_sgt5_version() {
     declare -A TAG_DATE_MAP
     local TAGS=()
 
+    # Debug: Show all available tags first
+    echo "Available tags from GHCR:"
+    echo "$versions" | jq -r '.[] | select(.metadata.container.tags != null) | .metadata.container.tags[]' | head -10
+    
     while read -r tag created; do
-        [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-dev$ ]] || continue  # Show only versions ending with "-dev"
+        [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-dev$ ]] || continue  # Show only x.x.x.x-dev format
         TAGS+=("$tag")
         TAG_DATE_MAP["$tag"]=$(date -d "$created" +%m/%d/%Y)
     done < <(echo "$versions" | jq -r '.[] | select(.metadata.container.tags != null) | .created_at as $created | .metadata.container.tags[] | "\(.),\($created)"' | tr ',' ' ')
+    
+    echo "Filtered tags (with -dev suffix):"
+    printf '%s\n' "${TAGS[@]}"
 
     if [[ ${#TAGS[@]} -eq 0 ]]; then
         dialog --msgbox "❌ No valid version tags found." 7 50
