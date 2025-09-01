@@ -178,12 +178,21 @@ get_latest_available_branch() {
     local repo="$2"
     local target="$3"
     local branches
+    local current_branch
+    
+    # Get current branch from git
+    current_branch=$(git branch --show-current 2>/dev/null || echo "")
     
     branches=$(curl -s -H "Authorization: token $token" \
         "https://api.github.com/repos/$repo/branches?per_page=100" | jq -r '.[].name' 2>/dev/null)
     
     if [[ -z "$branches" ]]; then
-        echo "" # Return empty string if fetch failed
+        # If can't fetch branches, fallback to current branch
+        if [[ -n "$current_branch" ]]; then
+            echo "$current_branch"
+            return 0
+        fi
+        echo "" # Return empty string if fetch failed and no current branch
         return 1
     fi
     
@@ -193,29 +202,48 @@ get_latest_available_branch() {
         return
     fi
     
-    # Extract major.minor.patch from target version (e.g., 10.0.0 from 10.0.0.512)
+    # Extract major.minor.patch from target version (e.g., 9.3.1 from 9.3.1.365)
     local major_minor_patch=$(echo "$target" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
     
     if [[ -n "$major_minor_patch" ]]; then
-        # First, try to find exact match or lower version with same major.minor.patch
-        local matching_branch=$(echo "$branches" | grep -E "^${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | awk -v t="$target" '$1 <= t' | tail -n1)
-        if [[ -n "$matching_branch" ]]; then
-            echo "$matching_branch"
+        # First try exact match
+        if echo "$branches" | grep -q "^$target$"; then
+            echo "$target"
         else
-            # If no matching branch found for this major.minor.patch, try to find any branch with same major version (lower or equal)
-            local major_version=$(echo "$major_minor_patch" | cut -d'.' -f1)
-            local fallback_branch=$(echo "$branches" | grep -E "^${major_version}\.[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | awk -v t="$target" '$1 <= t' | tail -n1)
-            if [[ -n "$fallback_branch" ]]; then
-                echo "$fallback_branch"
+            # Look for the highest version that doesn't exceed target across ALL semantic version branches
+            local all_semantic_branches=$(echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$')
+            
+            # Use bash version comparison instead of awk
+            local matching_branch=""
+            local best_branch=""
+            while read -r branch; do
+                if [[ -n "$branch" ]]; then
+                    # If branch <= target, it's a candidate
+                    if ! version_gt "$branch" "$target"; then
+                        # If this is the first valid candidate or it's better than current best
+                        if [[ -z "$best_branch" ]] || version_gt "$branch" "$best_branch"; then
+                            best_branch="$branch"
+                        fi
+                    fi
+                fi
+            done <<< "$all_semantic_branches"
+            matching_branch="$best_branch"
+            
+            if [[ -n "$matching_branch" ]]; then
+                echo "$matching_branch"
             else
-                # Last resort: get the latest semantic version branch that is lower or equal to target
-                local all_versions=$(echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V)
-                local lower_version=$(echo "$all_versions" | awk -v t="$target" '$1 <= t' | tail -n1)
-                if [[ -n "$lower_version" ]]; then
-                    echo "$lower_version"
+                # If no branch <= target found, fallback to current branch if it's valid and <= target
+                if [[ -n "$current_branch" ]] && echo "$branches" | grep -q "^$current_branch$"; then
+                    # Check if current branch is <= target
+                    if ! version_gt "$current_branch" "$target"; then
+                        echo "$current_branch"
+                    else
+                        # Current branch is higher than target, can't use it
+                        echo ""
+                    fi
                 else
-                    # If no lower version found, get the latest available
-                    echo "$all_versions" | tail -n1
+                    # No suitable branch found - return empty to indicate failure
+                    echo ""
                 fi
             fi
         fi
@@ -224,7 +252,13 @@ get_latest_available_branch() {
         if echo "$branches" | grep -q "^$target$"; then
             echo "$target"
         else
-            echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
+            # Fallback to current branch if available
+            if [[ -n "$current_branch" ]] && echo "$branches" | grep -q "^$current_branch$"; then
+                echo "$current_branch"
+            else
+                # Last resort: get latest available semantic version
+                echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
+            fi
         fi
     fi
 }
