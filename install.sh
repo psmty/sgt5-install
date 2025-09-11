@@ -173,6 +173,36 @@ select_sgt5_version() {
     echo "$selected_build"
 }
 
+version_to_array() {
+    local version="$1"
+    # Remove any suffix like -dev, -test for version comparison
+    version="${version%-*}"
+    
+    local IFS=.
+    local part
+    read -ra parts <<<"$version"
+    for ((i = 0; i < 4; i++)); do
+        if [[ -z "${parts[i]:-}" ]]; then
+            echo -n "0 "
+        else
+            echo -n "${parts[i]} "
+        fi
+    done
+}
+
+version_gt() {
+    local IFS=" "
+    local -a v1=($(version_to_array "$1"))
+    local -a v2=($(version_to_array "$2"))
+    for ((i = 0; i < 4; i++)); do
+        local val1="${v1[i]:-0}"
+        local val2="${v2[i]:-0}"
+        if ((10#${val1} > 10#${val2})); then return 0; fi
+        if ((10#${val1} < 10#${val2})); then return 1; fi
+    done
+    return 1
+}
+
 get_latest_available_branch() {
     local token="$1"
     local repo="$2"
