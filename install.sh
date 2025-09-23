@@ -7,7 +7,33 @@ WIDTH=80
 HEIGHT=15
 PRIVATE_REPO="psmty/sgt5-docker"
 
+# Check if running on supported OS
+check_os_support() {
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        case "$ID" in
+            ubuntu|debian)
+                echo "✅ Supported OS detected: $PRETTY_NAME"
+                ;;
+            *)
+                echo "❌ Unsupported operating system: $PRETTY_NAME"
+                echo "This installer only supports Ubuntu and Debian distributions."
+                echo "Please use a supported OS or install manually."
+                exit 1
+                ;;
+        esac
+    else
+        echo "❌ Cannot determine operating system."
+        echo "This installer only supports Ubuntu and Debian distributions."
+        echo "Please use a supported OS or install manually."
+        exit 1
+    fi
+}
+
 echo "Initializing installation..."
+
+# Check OS support first
+check_os_support
 
 # Check if current directory is root "/"
 if [[ "$PWD" == "/" ]]; then
