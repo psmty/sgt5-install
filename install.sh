@@ -109,126 +109,6 @@ fetch_ghcr_token_from_env_file() {
     echo "$extracted_token"
 }
 
-select_sgt5_version() {
-    local GHCR_ORG="psmty"
-    local GHCR_REPO="sgt5-images"
-    local CONTAINER_NAME="web"
-
-    for cmd in gh jq dialog; do
-        if ! command -v "$cmd" >/dev/null 2>&1; then
-            dialog --msgbox "❌ Required command not found: $cmd" 7 50
-            return 1
-        fi
-    done
-
-    if [[ -z "${GH_TOKEN:-}" ]]; then
-        dialog --msgbox "❌ GitHub token (GH_TOKEN) is not set." 7 50
-        return 1
-    fi
-
-    local versions=$(gh api -H "Accept: application/vnd.github.v3+json" \
-        "/orgs/${GHCR_ORG}/packages/container/${GHCR_REPO}%2F${CONTAINER_NAME}/versions" 2>/dev/null)
-
-    declare -A TAG_DATE_MAP
-    local TAGS=()
-
-    while read -r tag created; do
-        [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-dev$ ]] || continue  # Show only x.x.x.x-dev format
-        TAGS+=("$tag")
-        TAG_DATE_MAP["$tag"]=$(date -d "$created" +%m/%d/%Y)
-    done < <(echo "$versions" | jq -r '.[] | select(.metadata.container.tags != null) | .created_at as $created | .metadata.container.tags[] | "\(.),\($created)"' | tr ',' ' ')
-
-    if [[ ${#TAGS[@]} -eq 0 ]]; then
-        dialog --msgbox "❌ No valid version tags found." 7 50
-        return 1
-    fi
-
-    local base_versions=$(printf "%s\n" "${TAGS[@]}" | cut -d '.' -f 1-3 | sort -u -Vr)
-    local ITEMS=()
-
-    for base in $base_versions; do
-        ITEMS+=("$base" "")
-    done
-
-    local selected_base
-    selected_base=$(dialog --clear --backtitle "SGT5 Version Selector" \
-        --title "Select Base Version" \
-        --menu "Choose a base version:" 20 60 15 \
-        "${ITEMS[@]}" \
-        2>&1 >/dev/tty) || return 1
-
-    local BUILD_ITEMS=()
-    for tag in "${TAGS[@]}"; do
-        if [[ "$tag" == "$selected_base".* ]]; then
-            local label="${TAG_DATE_MAP[$tag]}"
-            BUILD_ITEMS+=("$tag" "$label")
-        fi
-    done
-
-    if [[ ${#BUILD_ITEMS[@]} -eq 0 ]]; then
-        dialog --msgbox "❌ No builds found for $selected_base." 7 50
-        return 1
-    fi
-
-    local selected_build
-    selected_build=$(dialog --clear --backtitle "SGT5 Version Selector" \
-        --title "Select Build Version" \
-        --menu "Choose a full version to install:" 20 70 15 \
-        "${BUILD_ITEMS[@]}" \
-        2>&1 >/dev/tty) || return 1
-
-    echo "$selected_build"
-}
-
-get_latest_available_branch() {
-    local token="$1"
-    local repo="$2"
-    local target="$3"
-    local branches
-    
-    branches=$(curl -s -H "Authorization: token $token" \
-        "https://api.github.com/repos/$repo/branches?per_page=100" | jq -r '.[].name' 2>/dev/null)
-    
-    if [[ -z "$branches" ]]; then
-        echo "" # Return empty string if fetch failed
-        return 1
-    fi
-    
-    # If target is empty, get the latest semantic version branch with dev_ prefix
-    if [[ -z "$target" ]]; then
-        echo "$branches" | grep -E '^dev_[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
-        return
-    fi
-    
-    # First, try exact match with dev_ prefix
-    if echo "$branches" | grep -q "^dev_$target$"; then
-        echo "dev_$target"
-        return
-    fi
-    
-    # Extract major.minor.patch from target version (e.g., 9.3.1 from 9.3.1.365)
-    local major_minor_patch=$(echo "$target" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
-    
-    if [[ -n "$major_minor_patch" ]]; then
-        # Look for dev_ branches matching the same major.minor.patch pattern
-        local matching_branch=$(echo "$branches" | grep -E "^dev_${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | awk -v t="dev_$target" '$1 <= t' | tail -n1)
-        if [[ -n "$matching_branch" ]]; then
-            echo "$matching_branch"
-            return
-        fi
-        
-        # If no matching branch found, try latest of that major.minor.patch with dev_ prefix
-        local latest_same_pattern=$(echo "$branches" | grep -E "^dev_${major_minor_patch//./\\.}\\.[0-9]+$" | sort -V | tail -n1)
-        if [[ -n "$latest_same_pattern" ]]; then
-            echo "$latest_same_pattern"
-            return
-        fi
-    fi
-    
-    # If nothing found so far, fallback to latest available version with dev_ prefix
-    echo "$branches" | grep -E '^dev_[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
-}
-
 validate_github_token() {
     local token="$1"
     local response
@@ -361,32 +241,18 @@ fi
 
 export GH_TOKEN
 
-TARGET_VERSION="$(select_sgt5_version)"
-if [[ -z "${TARGET_VERSION:-}" ]]; then
-    echo "Version selection failed or cancelled by user"
-fi
+echo "Using branch: dev"
 
-FALLBACK_BRANCH=$(get_latest_available_branch "$GITHUB_TOKEN" "$PRIVATE_REPO" "$TARGET_VERSION")
-
-if [[ -z "$FALLBACK_BRANCH" ]]; then
-    echo "No suitable fallback branch found for version $TARGET_VERSION"
-fi
-
-echo "Using branch: $FALLBACK_BRANCH"
-
-# Prepare temp folder
 TEMP_DIR=".tmp_clone_$(date +%s)"
 
-# Check if TEMP_DIR already exists (very unlikely, but safe)
 if [ -d "$TEMP_DIR" ]; then
     echo "Temporary directory $TEMP_DIR already exists. Removing..."
     rm -rf "$TEMP_DIR"
 fi
 
-# Try git clone with better error handling
 GIT_CLONE_URL="https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git"
 echo "Cloning the repository into temporary folder..."
-if ! git clone --branch "$FALLBACK_BRANCH" --depth 1 "$GIT_CLONE_URL" "$TEMP_DIR"; then
+if ! git clone --branch "dev" --depth 1 "$GIT_CLONE_URL" "$TEMP_DIR"; then
     echo "[ERROR] Failed to clone repository. Please check your token, branch name, and network connection."
     [ -d "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
     exit 1
@@ -412,29 +278,26 @@ shopt -s dotglob
 mv "$TEMP_DIR/sgt5_core" ./
 rm -rf "$TEMP_DIR"
 
-# Update template.env
 TEMPLATE_ENV_PATH="./sgt5_core/templates/template.env"
 if [ -f "$TEMPLATE_ENV_PATH" ]; then
-    # Remove possible carriage return for compatibility
     sed -i 's/\r$//' "$TEMPLATE_ENV_PATH"
 
-    # Add or update INIT_SGT5_VERSION
     if grep -q "^INIT_SGT5_VERSION=" "$TEMPLATE_ENV_PATH"; then
-        sed -i "s/^INIT_SGT5_VERSION=.*/INIT_SGT5_VERSION=$TARGET_VERSION/" "$TEMPLATE_ENV_PATH"
-        echo "INIT_SGT5_VERSION updated to $TARGET_VERSION in template.env."
+        sed -i "s/^INIT_SGT5_VERSION=.*/INIT_SGT5_VERSION=dev/" "$TEMPLATE_ENV_PATH"
+        echo "INIT_SGT5_VERSION updated to dev in template.env."
     else
-        echo "INIT_SGT5_VERSION=$TARGET_VERSION" >> "$TEMPLATE_ENV_PATH"
+        echo "INIT_SGT5_VERSION=dev" >> "$TEMPLATE_ENV_PATH"
         echo "INIT_SGT5_VERSION added to template.env."
     fi
-    # Add or update INIT_SGT5_BRANCH
+
     if grep -q "^INIT_SGT5_BRANCH=" "$TEMPLATE_ENV_PATH"; then
-        sed -i "s/^INIT_SGT5_BRANCH=.*/INIT_SGT5_BRANCH=$FALLBACK_BRANCH/" "$TEMPLATE_ENV_PATH"
-        echo "INIT_SGT5_BRANCH updated to $FALLBACK_BRANCH in template.env."
+        sed -i "s/^INIT_SGT5_BRANCH=.*/INIT_SGT5_BRANCH=dev/" "$TEMPLATE_ENV_PATH"
+        echo "INIT_SGT5_BRANCH updated to dev in template.env."
     else
-        echo "INIT_SGT5_BRANCH=$FALLBACK_BRANCH" >> "$TEMPLATE_ENV_PATH"
+        echo "INIT_SGT5_BRANCH=dev" >> "$TEMPLATE_ENV_PATH"
         echo "INIT_SGT5_BRANCH added to template.env."
     fi
-    # Add or update GITHUB_TOKEN
+
     if grep -q "^GITHUB_TOKEN=" "$TEMPLATE_ENV_PATH"; then
         sed -i "s/^GITHUB_TOKEN=.*/GITHUB_TOKEN=$GITHUB_TOKEN/" "$TEMPLATE_ENV_PATH"
         echo "GITHUB_TOKEN updated to value in template.env."
@@ -442,7 +305,7 @@ if [ -f "$TEMPLATE_ENV_PATH" ]; then
         echo "GITHUB_TOKEN=$GITHUB_TOKEN" >> "$TEMPLATE_ENV_PATH"
         echo "GITHUB_TOKEN added to template.env."
     fi
-    # Add or update PSMTY_CONTAINER_ALERT_API
+
     if grep -q "^PSMTY_CONTAINER_ALERT_API=" "$TEMPLATE_ENV_PATH"; then
         sed -i "s|^PSMTY_CONTAINER_ALERT_API=.*|PSMTY_CONTAINER_ALERT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-alert|" "$TEMPLATE_ENV_PATH"
         echo "PSMTY_CONTAINER_ALERT_API updated to value in template.env."
@@ -450,7 +313,7 @@ if [ -f "$TEMPLATE_ENV_PATH" ]; then
         echo "PSMTY_CONTAINER_ALERT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-alert" >> "$TEMPLATE_ENV_PATH"
         echo "PSMTY_CONTAINER_ALERT_API added to template.env."
     fi
-    # Add or update PSMTY_CONTAINER_SYSTEM_REPORT_API
+
     if grep -q "^PSMTY_CONTAINER_SYSTEM_REPORT_API=" "$TEMPLATE_ENV_PATH"; then
         sed -i "s|^PSMTY_CONTAINER_SYSTEM_REPORT_API=.*|PSMTY_CONTAINER_SYSTEM_REPORT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-report|" "$TEMPLATE_ENV_PATH"
         echo "PSMTY_CONTAINER_SYSTEM_REPORT_API updated to value in template.env."
@@ -458,7 +321,7 @@ if [ -f "$TEMPLATE_ENV_PATH" ]; then
         echo "PSMTY_CONTAINER_SYSTEM_REPORT_API=https://psmty-azure-dev-us-func-01.azurewebsites.net/api/container-report" >> "$TEMPLATE_ENV_PATH"
         echo "PSMTY_CONTAINER_SYSTEM_REPORT_API added to template.env."
     fi
-    # Add or update SGT5_SERVER_ENVIRONMENT
+
     if grep -q "^SGT5_SERVER_ENVIRONMENT=" "$TEMPLATE_ENV_PATH"; then
         sed -i "s/^SGT5_SERVER_ENVIRONMENT=.*/SGT5_SERVER_ENVIRONMENT=dev/" "$TEMPLATE_ENV_PATH"
         echo "SGT5_SERVER_ENVIRONMENT updated to value in template.env."
