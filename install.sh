@@ -109,6 +109,77 @@ fetch_ghcr_token_from_env_file() {
     echo "$extracted_token"
 }
 
+select_sgt5_version() {
+    local GHCR_ORG="psmty"
+    local GHCR_REPO="sgt5-images"
+    local CONTAINER_NAME="web"
+
+    for cmd in gh jq dialog; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            dialog --msgbox "❌ Required command not found: $cmd" 7 50
+            return 1
+        fi
+    done
+
+    if [[ -z "${GH_TOKEN:-}" ]]; then
+        dialog --msgbox "❌ GitHub token (GH_TOKEN) is not set." 7 50
+        return 1
+    fi
+
+    local versions=$(gh api -H "Accept: application/vnd.github.v3+json" \
+        "/orgs/${GHCR_ORG}/packages/container/${GHCR_REPO}%2F${CONTAINER_NAME}/versions" 2>/dev/null)
+
+    declare -A TAG_DATE_MAP
+    local TAGS=()
+
+    while read -r tag created; do
+        [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-dev$ ]] || continue
+        TAGS+=("$tag")
+        TAG_DATE_MAP["$tag"]=$(date -d "$created" +%m/%d/%Y)
+    done < <(echo "$versions" | jq -r '.[] | select(.metadata.container.tags != null) | .created_at as $created | .metadata.container.tags[] | "\(.),\($created)"' | tr ',' ' ')
+
+    if [[ ${#TAGS[@]} -eq 0 ]]; then
+        dialog --msgbox "❌ No valid version tags found." 7 50
+        return 1
+    fi
+
+    local base_versions=$(printf "%s\n" "${TAGS[@]}" | cut -d '.' -f 1-3 | sort -u -Vr)
+    local ITEMS=()
+
+    for base in $base_versions; do
+        ITEMS+=("$base" "")
+    done
+
+    local selected_base
+    selected_base=$(dialog --clear --backtitle "SGT5 Version Selector" \
+        --title "Select Base Version" \
+        --menu "Choose a base version:" 20 60 15 \
+        "${ITEMS[@]}" \
+        2>&1 >/dev/tty) || return 1
+
+    local BUILD_ITEMS=()
+    for tag in "${TAGS[@]}"; do
+        if [[ "$tag" == "$selected_base".* ]]; then
+            local label="${TAG_DATE_MAP[$tag]}"
+            BUILD_ITEMS+=("$tag" "$label")
+        fi
+    done
+
+    if [[ ${#BUILD_ITEMS[@]} -eq 0 ]]; then
+        dialog --msgbox "❌ No builds found for $selected_base." 7 50
+        return 1
+    fi
+
+    local selected_build
+    selected_build=$(dialog --clear --backtitle "SGT5 Version Selector" \
+        --title "Select Build Version" \
+        --menu "Choose a full version to install:" 20 70 15 \
+        "${BUILD_ITEMS[@]}" \
+        2>&1 >/dev/tty) || return 1
+
+    echo "$selected_build"
+}
+
 validate_github_token() {
     local token="$1"
     local response
@@ -241,6 +312,13 @@ fi
 
 export GH_TOKEN
 
+TARGET_VERSION="$(select_sgt5_version)"
+if [[ -z "${TARGET_VERSION:-}" ]]; then
+    echo "Version selection failed or cancelled by user"
+    exit 1
+fi
+
+echo "Selected version: $TARGET_VERSION"
 echo "Using branch: dev"
 
 TEMP_DIR=".tmp_clone_$(date +%s)"
@@ -283,10 +361,10 @@ if [ -f "$TEMPLATE_ENV_PATH" ]; then
     sed -i 's/\r$//' "$TEMPLATE_ENV_PATH"
 
     if grep -q "^INIT_SGT5_VERSION=" "$TEMPLATE_ENV_PATH"; then
-        sed -i "s/^INIT_SGT5_VERSION=.*/INIT_SGT5_VERSION=dev/" "$TEMPLATE_ENV_PATH"
-        echo "INIT_SGT5_VERSION updated to dev in template.env."
+        sed -i "s/^INIT_SGT5_VERSION=.*/INIT_SGT5_VERSION=$TARGET_VERSION/" "$TEMPLATE_ENV_PATH"
+        echo "INIT_SGT5_VERSION updated to $TARGET_VERSION in template.env."
     else
-        echo "INIT_SGT5_VERSION=dev" >> "$TEMPLATE_ENV_PATH"
+        echo "INIT_SGT5_VERSION=$TARGET_VERSION" >> "$TEMPLATE_ENV_PATH"
         echo "INIT_SGT5_VERSION added to template.env."
     fi
 
