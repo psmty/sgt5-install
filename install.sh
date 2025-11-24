@@ -199,126 +199,6 @@ select_sgt5_version() {
     echo "$selected_build"
 }
 
-version_to_array() {
-    local version="$1"
-    # Remove any suffix like -dev, -test for version comparison
-    version="${version%-*}"
-    
-    local IFS=.
-    local part
-    read -ra parts <<<"$version"
-    for ((i = 0; i < 4; i++)); do
-        if [[ -z "${parts[i]:-}" ]]; then
-            echo -n "0 "
-        else
-            echo -n "${parts[i]} "
-        fi
-    done
-}
-
-version_gt() {
-    local IFS=" "
-    local -a v1=($(version_to_array "$1"))
-    local -a v2=($(version_to_array "$2"))
-    for ((i = 0; i < 4; i++)); do
-        local val1="${v1[i]:-0}"
-        local val2="${v2[i]:-0}"
-        if ((10#${val1} > 10#${val2})); then return 0; fi
-        if ((10#${val1} < 10#${val2})); then return 1; fi
-    done
-    return 1
-}
-
-get_latest_available_branch() {
-    local token="$1"
-    local repo="$2"
-    local target="$3"
-    local branches
-    local current_branch
-    
-    # Get current branch from git
-    current_branch=$(git branch --show-current 2>/dev/null || echo "")
-    
-    branches=$(curl -s -H "Authorization: token $token" \
-        "https://api.github.com/repos/$repo/branches?per_page=100" | jq -r '.[].name' 2>/dev/null)
-    
-    if [[ -z "$branches" ]]; then
-        # If can't fetch branches, fallback to current branch
-        if [[ -n "$current_branch" ]]; then
-            echo "$current_branch"
-            return 0
-        fi
-        echo "" # Return empty string if fetch failed and no current branch
-        return 1
-    fi
-    
-    # If target is empty, get the latest semantic version branch
-    if [[ -z "$target" ]]; then
-        echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
-        return
-    fi
-    
-    # Extract major.minor.patch from target version (e.g., 9.3.1 from 9.3.1.365)
-    local major_minor_patch=$(echo "$target" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
-    
-    if [[ -n "$major_minor_patch" ]]; then
-        # First try exact match
-        if echo "$branches" | grep -q "^$target$"; then
-            echo "$target"
-        else
-            # Look for the highest version that doesn't exceed target across ALL semantic version branches
-            local all_semantic_branches=$(echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$')
-            
-            # Use bash version comparison instead of awk
-            local matching_branch=""
-            local best_branch=""
-            while read -r branch; do
-                if [[ -n "$branch" ]]; then
-                    # If branch <= target, it's a candidate
-                    if ! version_gt "$branch" "$target"; then
-                        # If this is the first valid candidate or it's better than current best
-                        if [[ -z "$best_branch" ]] || version_gt "$branch" "$best_branch"; then
-                            best_branch="$branch"
-                        fi
-                    fi
-                fi
-            done <<< "$all_semantic_branches"
-            matching_branch="$best_branch"
-            
-            if [[ -n "$matching_branch" ]]; then
-                echo "$matching_branch"
-            else
-                # If no branch <= target found, fallback to current branch if it's valid and <= target
-                if [[ -n "$current_branch" ]] && echo "$branches" | grep -q "^$current_branch$"; then
-                    # Check if current branch is <= target
-                    if ! version_gt "$current_branch" "$target"; then
-                        echo "$current_branch"
-                    else
-                        # Current branch is higher than target, can't use it
-                        echo ""
-                    fi
-                else
-                    # No suitable branch found - return empty to indicate failure
-                    echo ""
-                fi
-            fi
-        fi
-    else
-        # If target doesn't match expected pattern, try exact match first, then latest
-        if echo "$branches" | grep -q "^$target$"; then
-            echo "$target"
-        else
-            # Fallback to current branch if available
-            if [[ -n "$current_branch" ]] && echo "$branches" | grep -q "^$current_branch$"; then
-                echo "$current_branch"
-            else
-                # Last resort: get latest available semantic version
-                echo "$branches" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1
-            fi
-        fi
-    fi
-}
-
 validate_github_token() {
     local token="$1"
     local response
@@ -454,39 +334,28 @@ export GH_TOKEN
 TARGET_VERSION="$(select_sgt5_version)"
 if [[ -z "${TARGET_VERSION:-}" ]]; then
     echo "Version selection failed or cancelled by user"
-fi
-
-FALLBACK_BRANCH=$(get_latest_available_branch "$GITHUB_TOKEN" "$PRIVATE_REPO" "$TARGET_VERSION")
-
-if [[ -z "$FALLBACK_BRANCH" ]]; then
-    echo "[ERROR] No suitable fallback branch found for version $TARGET_VERSION"
-    echo "[ERROR] Please check if the repository has any version branches"
     exit 1
 fi
 
-echo "Using branch: $FALLBACK_BRANCH"
+echo "Selected version: $TARGET_VERSION"
+echo "Using branch: prod"
 
-# Prepare temp folder
 TEMP_DIR=".tmp_clone_$(date +%s)"
 
-# Check if TEMP_DIR already exists (very unlikely, but safe)
 if [ -d "$TEMP_DIR" ]; then
     echo "Temporary directory $TEMP_DIR already exists. Removing..."
     rm -rf "$TEMP_DIR"
 fi
 
-# Try git clone with better error handling
 GIT_CLONE_URL="https://$GITHUB_TOKEN@github.com/$PRIVATE_REPO.git"
 echo "Cloning the repository into temporary folder..."
-echo "Target branch: $FALLBACK_BRANCH"
-echo "Repository: $PRIVATE_REPO"
 
-if ! git clone --branch "$FALLBACK_BRANCH" --depth 1 "$GIT_CLONE_URL" "$TEMP_DIR" 2>&1; then
+if ! git clone --branch "prod" --depth 1 "$GIT_CLONE_URL" "$TEMP_DIR" 2>&1; then
     echo "[ERROR] Failed to clone repository."
-    echo "[ERROR] Branch '$FALLBACK_BRANCH' not found in repository '$PRIVATE_REPO'"
+    echo "[ERROR] Branch 'prod' not found in repository '$PRIVATE_REPO'"
     echo "[ERROR] Please check:"
     echo "[ERROR] - Your GitHub token has access to the repository"
-    echo "[ERROR] - The branch '$FALLBACK_BRANCH' exists in the repository"
+    echo "[ERROR] - The branch 'prod' exists in the repository"
     echo "[ERROR] - Your network connection is stable"
     [ -d "$TEMP_DIR" ] && rm -rf "$TEMP_DIR"
     exit 1
@@ -518,7 +387,6 @@ if [ -f "$TEMPLATE_ENV_PATH" ]; then
     # Remove possible carriage return for compatibility
     sed -i 's/\r$//' "$TEMPLATE_ENV_PATH"
 
-    # Add or update INIT_SGT5_VERSION
     if grep -q "^INIT_SGT5_VERSION=" "$TEMPLATE_ENV_PATH"; then
         sed -i "s/^INIT_SGT5_VERSION=.*/INIT_SGT5_VERSION=$TARGET_VERSION/" "$TEMPLATE_ENV_PATH"
         echo "INIT_SGT5_VERSION updated to $TARGET_VERSION in template.env."
@@ -526,15 +394,15 @@ if [ -f "$TEMPLATE_ENV_PATH" ]; then
         echo "INIT_SGT5_VERSION=$TARGET_VERSION" >> "$TEMPLATE_ENV_PATH"
         echo "INIT_SGT5_VERSION added to template.env."
     fi
-    # Add or update INIT_SGT5_BRANCH
+
     if grep -q "^INIT_SGT5_BRANCH=" "$TEMPLATE_ENV_PATH"; then
-        sed -i "s/^INIT_SGT5_BRANCH=.*/INIT_SGT5_BRANCH=$FALLBACK_BRANCH/" "$TEMPLATE_ENV_PATH"
-        echo "INIT_SGT5_BRANCH updated to $FALLBACK_BRANCH in template.env."
+        sed -i "s/^INIT_SGT5_BRANCH=.*/INIT_SGT5_BRANCH=prod/" "$TEMPLATE_ENV_PATH"
+        echo "INIT_SGT5_BRANCH updated to prod in template.env."
     else
-        echo "INIT_SGT5_BRANCH=$FALLBACK_BRANCH" >> "$TEMPLATE_ENV_PATH"
+        echo "INIT_SGT5_BRANCH=prod" >> "$TEMPLATE_ENV_PATH"
         echo "INIT_SGT5_BRANCH added to template.env."
     fi
-    # Add or update GITHUB_TOKEN
+
     if grep -q "^GITHUB_TOKEN=" "$TEMPLATE_ENV_PATH"; then
         sed -i "s/^GITHUB_TOKEN=.*/GITHUB_TOKEN=$GITHUB_TOKEN/" "$TEMPLATE_ENV_PATH"
         echo "GITHUB_TOKEN updated to value in template.env."
