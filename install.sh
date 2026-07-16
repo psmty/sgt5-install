@@ -145,7 +145,7 @@ select_sgt5_version() {
     fi
 
     local versions=$(gh api -H "Accept: application/vnd.github.v3+json" \
-        "/orgs/${GHCR_ORG}/packages/container/${GHCR_REPO}%2F${CONTAINER_NAME}/versions" 2>/dev/null)
+        "/orgs/${GHCR_ORG}/packages/container/${GHCR_REPO}%2F${CONTAINER_NAME}/versions?per_page=100" 2>/dev/null)
 
     declare -A TAG_DATE_MAP
     local TAGS=()
